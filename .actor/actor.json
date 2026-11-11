@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "omni-extract-mcp",
-  "title": "OmniExtract: X Articles, TikTok/Douyin & Video Transcripts to Markdown (MCP Ready)",
+  "title": "OmniExtract: X Articles, TikTok/Douyin & Video to Markdown",
   "description": "Universal, cookie-free content & transcript extractor for AI Agents and LLMs. Extracts full X (Twitter) Articles/Tweets, watermark-free Douyin/TikTok videos & galleries, YouTube/Bilibili transcripts, and anti-bot web pages into clean Markdown.",
   "version": "1.0",
   "meta": {
