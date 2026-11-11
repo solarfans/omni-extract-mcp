@@ -1,0 +1,13 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "OmniExtract Output Schema",
+  "description": "Structured Markdown, transcript, and media links extracted from the target URLs.",
+  "properties": {
+    "dataset": {
+      "type": "string",
+      "title": "Extracted Content & Markdown Dataset",
+      "description": "Dataset containing extracted Markdown, plain text, transcripts, and watermark-free media URLs for each target URL.",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    }
+  }
+}

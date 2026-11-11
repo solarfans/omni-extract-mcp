@@ -8,30 +8,9 @@
     "templateId": "python-start"
   },
   "input": "./input_schema.json",
+  "output": "./output_schema.json",
   "dockerfile": "../Dockerfile",
   "storages": {
-    "dataset": {
-      "actorSpecification": 1,
-      "title": "Extracted Content & Markdown Results",
-      "views": {
-        "overview": {
-          "title": "Overview",
-          "transformation": {
-            "fields": [
-              "platform",
-              "content_type",
-              "title",
-              "author",
-              "canonical_url",
-              "extraction_tier",
-              "markdown"
-            ]
-          },
-          "display": {
-            "component": "table"
-          }
-        }
-      }
-    }
+    "dataset": "./dataset_schema.json"
   }
 }

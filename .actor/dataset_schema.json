@@ -1,0 +1,104 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+        "title": "Success Status"
+      },
+      "platform": {
+        "type": "string",
+        "title": "Platform"
+      },
+      "content_type": {
+        "type": "string",
+        "title": "Content Type"
+      },
+      "title": {
+        "type": "string",
+        "title": "Title"
+      },
+      "author": {
+        "type": "string",
+        "title": "Author"
+      },
+      "canonical_url": {
+        "type": "string",
+        "title": "Canonical URL"
+      },
+      "markdown": {
+        "type": "string",
+        "title": "Clean Markdown"
+      },
+      "text": {
+        "type": "string",
+        "title": "Plain Text"
+      },
+      "transcript": {
+        "type": ["string", "null"],
+        "title": "Video Transcript"
+      },
+      "media_urls": {
+        "type": "array",
+        "title": "Media URLs",
+        "items": {
+          "type": "string"
+        }
+      },
+      "extraction_tier": {
+        "type": "string",
+        "title": "Extraction Tier"
+      }
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": [
+          "platform",
+          "content_type",
+          "title",
+          "author",
+          "canonical_url",
+          "extraction_tier",
+          "markdown"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "platform": {
+            "label": "Platform",
+            "format": "text"
+          },
+          "content_type": {
+            "label": "Type",
+            "format": "text"
+          },
+          "title": {
+            "label": "Title",
+            "format": "text"
+          },
+          "author": {
+            "label": "Author",
+            "format": "text"
+          },
+          "canonical_url": {
+            "label": "URL",
+            "format": "link"
+          },
+          "extraction_tier": {
+            "label": "Tier",
+            "format": "text"
+          },
+          "markdown": {
+            "label": "Markdown",
+            "format": "text"
+          }
+        }
+      }
+    }
+  }
+}
