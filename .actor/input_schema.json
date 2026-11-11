@@ -8,8 +8,12 @@
       "type": "array",
       "description": "One or more URLs to extract (X/Twitter tweets & long-form Articles, Douyin, TikTok, YouTube, Bilibili, GitHub, or any web article).",
       "editor": "stringList",
+      "default": [
+        "https://x.com/ai_chuhai/status/2037437653071835440",
+        "https://v.douyin.com/0kH2cQVrf0o/"
+      ],
       "prefill": [
-        "https://x.com/OpenAI/status/1895181715035160856",
+        "https://x.com/ai_chuhai/status/2037437653071835440",
         "https://v.douyin.com/0kH2cQVrf0o/"
       ]
     },

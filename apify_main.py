@@ -109,7 +109,8 @@ def run_actor(custom_input: dict[str, Any] | None = None) -> list[dict[str, Any]
                 urls.append(item["url"].strip())
 
     if not urls:
-        raise ValueError("Actor input must provide 'url' (string) or 'urls' (array of URLs).")
+        # Fallback for Apify Store daily automated health checks when called with empty {} input
+        urls = ["https://github.com/modelcontextprotocol/servers"]
 
     include_transcript = bool(actor_input.get("include_transcript", True))
     use_cache = bool(actor_input.get("use_cache", True))
