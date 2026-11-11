@@ -7,10 +7,107 @@ import re
 import shutil
 import subprocess
 import tempfile
+import urllib.parse
+import urllib.request
 from typing import Any
 
 from ..models import OmniExtractResult, PlatformType
 from .douyin_extractor import clean_short_title
+
+
+def extract_tiktok_stateless(url: str, title_hint: str | None = None, timeout: float = 12.0) -> OmniExtractResult | None:
+    """
+    Fast cookie-free TikTok extractor (TikWM + oEmbed) that works reliably on datacenter/cloud IPs
+    where direct TikTok webpage scraping or yt-dlp might hit CAPTCHA/login walls.
+    Extracts HD watermark-free MP4 or Photo Carousel images, engagement stats, and clean Markdown.
+    """
+    try:
+        api_url = f"https://www.tikwm.com/api/?url={urllib.parse.quote(url, safe='')}&hd=1"
+        req = urllib.request.Request(
+            api_url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Accept": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read(2_000_000).decode("utf-8", errors="replace"))
+        if payload.get("code") == 0 and isinstance(payload.get("data"), dict):
+            data = payload["data"]
+            vid_id = str(data.get("id") or "tiktok")
+            author_obj = data.get("author") or {}
+            author = str(author_obj.get("nickname") or author_obj.get("unique_id") or "TikTok Creator")
+            unique_id = str(author_obj.get("unique_id") or "")
+            desc = str(data.get("title") or data.get("content_desc") or "").strip()
+            title = clean_short_title(title_hint or desc or f"TikTok {vid_id}", author=author)
+            duration = float(data.get("duration") or 0.0)
+            cover_url = str(data.get("origin_cover") or data.get("cover") or "") or None
+
+            images = data.get("images")
+            media_urls: list[str] = []
+            content_type = "video"
+            if isinstance(images, list) and images:
+                content_type = "gallery"
+                media_urls = [str(img) for img in images if img]
+            else:
+                play_url = str(data.get("hdplay") or data.get("play") or data.get("wmplay") or "")
+                if play_url:
+                    media_urls.append(play_url)
+
+            canonical_url = (
+                f"https://www.tiktok.com/@{unique_id}/video/{vid_id}"
+                if unique_id and vid_id.isdigit()
+                else url
+            )
+
+            md_lines = [
+                f"# {title}",
+                "",
+                "- **Platform**: TikTok",
+                f"- **Author**: {author}" + (f" (`@{unique_id}`)" if unique_id else ""),
+                f"- **URL**: {canonical_url}",
+                f"- **Content Type**: {content_type}",
+                f"- **Duration**: {duration:.1f}s",
+                f"- **Stats**: ❤️ {data.get('digg_count', 0)} | 💬 {data.get('comment_count', 0)} | 🔄 {data.get('share_count', 0)} | ▶️ {data.get('play_count', 0)}",
+                "",
+                "---",
+                "",
+            ]
+            if desc:
+                md_lines.extend(["## Caption / Description", "", desc, ""])
+            if media_urls:
+                md_lines.append("## Watermark-Free Media URLs")
+                md_lines.append("")
+                for idx, m_url in enumerate(media_urls, 1):
+                    md_lines.append(f"{idx}. {m_url}")
+
+            return OmniExtractResult(
+                url=url,
+                canonical_url=canonical_url,
+                platform="tiktok",
+                content_type=content_type,  # type: ignore[arg-type]
+                content_id=vid_id,
+                title=title,
+                author=author,
+                text=desc or title,
+                markdown="\n".join(md_lines).strip(),
+                media_urls=media_urls,
+                cover_url=cover_url,
+                duration_seconds=duration,
+                extraction_tier="tiktok_tikwm_stateless",
+                credits_charged=1,
+                metadata={
+                    "region": data.get("region"),
+                    "play_count": data.get("play_count"),
+                    "digg_count": data.get("digg_count"),
+                    "comment_count": data.get("comment_count"),
+                    "share_count": data.get("share_count"),
+                    "music_title": (data.get("music_info") or {}).get("title"),
+                },
+            )
+    except Exception:
+        pass
+    return None
 
 
 def _find_binary(name: str, env_var: str) -> str:

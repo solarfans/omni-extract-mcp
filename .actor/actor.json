@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "omni-extract-mcp",
-  "title": "Douyin 抖音 & X (Twitter) Article to Markdown Scraper (MCP)",
+  "title": "Douyin 抖音, TikTok & X (Twitter) Article to Markdown (MCP)",
   "description": "Extract full X (Twitter) long-form Articles, watermark-free Douyin (抖音) & TikTok videos/images, Xiaohongshu (RedNote), and YouTube transcripts into clean Markdown for AI Agents, Obsidian & MCP. Zero cookies required.",
   "version": "1.0",
   "meta": {

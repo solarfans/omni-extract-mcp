@@ -6,7 +6,7 @@ from typing import Any
 
 from .cache_and_billing import CacheAndBillingStore
 from .extractors.douyin_extractor import extract_douyin_stateless
-from .extractors.video_extractor import extract_video_and_transcript
+from .extractors.video_extractor import extract_tiktok_stateless, extract_video_and_transcript
 from .extractors.web_extractor import extract_web_markdown
 from .extractors.x_extractor import extract_x_content
 from .models import OmniExtractResult
@@ -78,7 +78,25 @@ class OmniExtractEngine:
                     include_transcript=include_transcript,
                     title_hint=target.title_hint,
                 )
-        elif target.platform in {"youtube", "bilibili", "tiktok"}:
+        elif target.platform == "tiktok":
+            tt_res = extract_tiktok_stateless(url=target.canonical_url, title_hint=target.title_hint)
+            if tt_res is not None:
+                result = tt_res
+            else:
+                try:
+                    result = extract_video_and_transcript(
+                        url=target.canonical_url,
+                        platform="tiktok",
+                        include_transcript=include_transcript,
+                        title_hint=target.title_hint,
+                    )
+                except Exception:
+                    result = extract_web_markdown(
+                        url=target.canonical_url,
+                        platform="tiktok",
+                        title_hint=target.title_hint,
+                    )
+        elif target.platform in {"youtube", "bilibili"}:
             try:
                 result = extract_video_and_transcript(
                     url=target.canonical_url,
