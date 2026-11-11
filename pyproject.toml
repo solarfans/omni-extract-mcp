@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-extract-mcp"
+version = "1.0.0"
+description = "Universal, cookie-free content & transcript extraction MCP Server and Apify Actor (X Articles, Douyin/TikTok watermark-free media, YouTube transcripts, Anti-bot Web Markdown)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "solarfans"}
+]
+dependencies = [
+    "yt-dlp>=2025.1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+omni-extract-mcp = "omni_extract.mcp_server:main"
+omni-extract-actor = "apify_main:main"

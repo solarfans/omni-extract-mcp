@@ -1,0 +1,30 @@
+{
+  "title": "OmniExtract Universal Content & Transcript Extractor Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "urls": {
+      "title": "Target URLs",
+      "type": "array",
+      "description": "One or more URLs to extract (X/Twitter tweets & long-form Articles, Douyin, TikTok, YouTube, Bilibili, GitHub, or any web article).",
+      "editor": "stringList",
+      "prefill": [
+        "https://x.com/OpenAI/status/1895181715035160856",
+        "https://v.douyin.com/0kH2cQVrf0o/"
+      ]
+    },
+    "include_transcript": {
+      "title": "Include Video Subtitles / Transcript",
+      "type": "boolean",
+      "description": "Automatically extract clean plain-text transcript and timestamped segments for YouTube/Bilibili/TikTok videos.",
+      "default": true
+    },
+    "use_cache": {
+      "title": "Enable 24h Fast Cache",
+      "type": "boolean",
+      "description": "Return cached extraction results instantaneously if the same URL was extracted within 24 hours.",
+      "default": true
+    }
+  },
+  "required": ["urls"]
+}

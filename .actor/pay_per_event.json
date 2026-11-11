@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "name": "content_item_extracted",
+      "title": "Content Item Extracted (X Article, Douyin/TikTok Watermark-Free Media, or Anti-Bot Web Markdown)",
+      "description": "Charged per successfully extracted article, social post, or watermark-free Douyin/TikTok media item.",
+      "priceUsd": 0.005
+    },
+    {
+      "name": "video_transcript_extracted",
+      "title": "Video Subtitle & Timestamped Transcript Extracted",
+      "description": "Charged when full video subtitles and timestamped segments are extracted alongside video metadata.",
+      "priceUsd": 0.01
+    }
+  ]
+}
