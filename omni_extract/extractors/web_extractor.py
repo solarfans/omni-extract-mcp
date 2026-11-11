@@ -117,6 +117,39 @@ def is_valid_article_body(text: str, min_chars: int = 120) -> bool:
     return True
 
 
+def _try_xiaohongshu_extract(url: str, timeout: float = 12.0) -> tuple[str, str, str, str, list[str]] | None:
+    """Cookie-free Xiaohongshu (RedNote) SSR meta & initial state extractor."""
+    parsed = urllib.parse.urlsplit(url)
+    if "xiaohongshu.com" not in parsed.netloc.lower() and "xhslink.com" not in parsed.netloc.lower():
+        return None
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            html_str = resp.read(2_000_000).decode("utf-8", errors="replace")
+
+        og_title = re.search(r'<meta\s+name="og:title"\s+content="([^"]+)"', html_str)
+        og_desc = re.search(r'<meta\s+name="description"\s+content="([^"]+)"', html_str)
+        og_imgs = re.findall(r'<meta\s+name="og:image"\s+content="([^"]+)"', html_str)
+
+        title = (og_title.group(1).replace(" - 小红书", "").strip() if og_title else "") or "Xiaohongshu Note"
+        desc = (og_desc.group(1).strip() if og_desc else "")
+        if len(desc) >= 20 or og_imgs:
+            body = desc or title
+            if og_imgs:
+                body += "\n\n## Note Images\n" + "\n".join(f"- {u}" for u in og_imgs[:12])
+            return clean_short_title(title, author="Xiaohongshu"), "xiaohongshu.com", body, "xhs_ssr_meta", og_imgs[:12]
+    except Exception:
+        pass
+    return None
+
+
 def _try_github_extract(url: str, timeout: float = 12.0) -> tuple[str, str, str, str] | None:
     """Specialized fast extractor for GitHub repositories and blob files."""
     parsed = urllib.parse.urlsplit(url)
@@ -259,6 +292,28 @@ def extract_web_markdown(
     Cascade: GitHub Fast-Path -> Direct Semantic HTML -> Jina Reader Markdown -> Optional BYOK Firecrawl.
     """
     content_id = hashlib.sha1(url.encode("utf-8")).hexdigest()[:12]
+
+    xhs_res = _try_xiaohongshu_extract(url)
+    if xhs_res:
+        extracted_title, author, md_body, tier_used, xhs_imgs = xhs_res
+        title = clean_short_title(title_hint or extracted_title, author=author)
+        full_md = f"# {title}\n\n- **Source**: {url}\n- **Platform**: Xiaohongshu (RedNote)\n- **Extractor**: `{tier_used}`\n\n---\n\n{md_body}"
+        return OmniExtractResult(
+            url=url,
+            canonical_url=url,
+            platform="xiaohongshu",
+            content_type="gallery" if xhs_imgs else "article",
+            content_id=content_id,
+            title=title,
+            author=author,
+            text=md_body,
+            markdown=full_md,
+            media_urls=xhs_imgs,
+            cover_url=xhs_imgs[0] if xhs_imgs else None,
+            extraction_tier=tier_used,
+            credits_charged=1,
+            metadata={"char_count": len(md_body), "image_count": len(xhs_imgs)},
+        )
 
     res = (
         _try_github_extract(url)

@@ -1,14 +1,15 @@
 {
   "actorSpecification": 1,
   "name": "omni-extract-mcp",
-  "title": "OmniExtract: X Articles, TikTok/Douyin & Video to Markdown",
-  "description": "Universal, cookie-free content & transcript extractor for AI Agents and LLMs. Extracts full X (Twitter) Articles/Tweets, watermark-free Douyin/TikTok videos & galleries, YouTube/Bilibili transcripts, and anti-bot web pages into clean Markdown.",
+  "title": "Douyin 抖音 & X (Twitter) Article to Markdown Scraper (MCP)",
+  "description": "Extract full X (Twitter) long-form Articles, watermark-free Douyin (抖音) & TikTok videos/images, Xiaohongshu (RedNote), and YouTube transcripts into clean Markdown for AI Agents, Obsidian & MCP. Zero cookies required.",
   "version": "1.0",
   "meta": {
     "templateId": "python-start"
   },
   "input": "./input_schema.json",
   "output": "./output_schema.json",
+  "readme": "./ACTOR_README.md",
   "dockerfile": "../Dockerfile",
   "storages": {
     "dataset": "./dataset_schema.json"
