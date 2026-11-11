@@ -110,6 +110,116 @@ def extract_tiktok_stateless(url: str, title_hint: str | None = None, timeout: f
     return None
 
 
+def extract_bilibili_stateless(url: str, title_hint: str | None = None, timeout: float = 12.0) -> OmniExtractResult | None:
+    """
+    Fast cookie-free Bilibili SSR (__INITIAL_STATE__) extractor with automatic GZIP decompression.
+    Extracts video title, UP author, description, duration, cover image, and engagement stats
+    without hitting Bilibili API 412 blocks or requiring yt-dlp login cookies.
+    """
+    import gzip
+    import zlib
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read(2_500_000)
+            enc = (resp.headers.get("Content-Encoding") or "").lower()
+            if "gzip" in enc or raw[:2] == b"\x1f\x8b":
+                raw = gzip.decompress(raw)
+            elif "deflate" in enc:
+                raw = zlib.decompress(raw)
+            html_str = raw.decode("utf-8", errors="replace")
+
+        m = re.search(r"window\.__INITIAL_STATE__\s*=\s*(\{.+?\});\(function", html_str)
+        if not m:
+            return None
+        state = json.loads(m.group(1))
+        vd = state.get("videoData") or {}
+        if not vd or not vd.get("title"):
+            return None
+
+        bvid = str(vd.get("bvid") or state.get("bvid") or "bilibili")
+        author = str((vd.get("owner") or {}).get("name") or "Bilibili UP")
+        raw_title = title_hint or vd.get("title") or f"Bilibili {bvid}"
+        title = clean_short_title(str(raw_title), author=author)
+        desc = str(vd.get("desc") or "").strip()
+        duration = float(vd.get("duration") or 0.0)
+        cover_url = str(vd.get("pic") or "") or None
+        if cover_url and cover_url.startswith("http://"):
+            cover_url = "https://" + cover_url[len("http://") :]
+        canonical_url = f"https://www.bilibili.com/video/{bvid}" if bvid.startswith("BV") else url
+        stat = vd.get("stat") or {}
+
+        # Extract subtitle list if embedded in SSR videoData
+        sub_list = ((vd.get("subtitle") or {}).get("list")) or []
+        media_urls: list[str] = []
+        if cover_url:
+            media_urls.append(cover_url)
+
+        md_lines = [
+            f"# {title}",
+            "",
+            "- **Platform**: Bilibili (哔哩哔哩)",
+            f"- **Author (UP主)**: {author}",
+            f"- **URL**: {canonical_url}",
+            f"- **BVID**: `{bvid}`",
+            f"- **Duration**: {duration:.1f}s",
+            f"- **Stats**: ▶️ {stat.get('view', 0)} | 👍 {stat.get('like', 0)} | 🪙 {stat.get('coin', 0)} | ⭐ {stat.get('favorite', 0)} | 💬 {stat.get('reply', 0)}",
+            "",
+            "---",
+            "",
+        ]
+        if desc:
+            md_lines.extend(["## Description (视频简介)", "", desc, ""])
+
+        pages = vd.get("pages") or []
+        if len(pages) > 1:
+            md_lines.append("## Video Chapters / Parts (分P列表)")
+            md_lines.append("")
+            for p in pages[:25]:
+                md_lines.append(f"- **P{p.get('page')}**: {p.get('part')} ({p.get('duration', 0)}s)")
+
+        return OmniExtractResult(
+            url=url,
+            canonical_url=canonical_url,
+            platform="bilibili",
+            content_type="video",
+            content_id=bvid,
+            title=title,
+            author=author,
+            text=desc or title,
+            markdown="\n".join(md_lines).strip(),
+            media_urls=media_urls,
+            cover_url=cover_url,
+            duration_seconds=duration,
+            extraction_tier="bilibili_ssr_initial_state",
+            credits_charged=1,
+            metadata={
+                "bvid": bvid,
+                "aid": vd.get("aid"),
+                "view_count": stat.get("view"),
+                "like_count": stat.get("like"),
+                "coin_count": stat.get("coin"),
+                "favorite_count": stat.get("favorite"),
+                "danmaku_count": stat.get("danmaku"),
+                "subtitle_tracks": len(sub_list),
+            },
+        )
+    except Exception:
+        pass
+    return None
+
+
 def _find_binary(name: str, env_var: str) -> str:
     env_val = os.environ.get(env_var, "").strip()
     if env_val and shutil.which(env_val):

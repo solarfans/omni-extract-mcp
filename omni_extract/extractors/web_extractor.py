@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 from html.parser import HTMLParser
 import json
@@ -7,10 +8,30 @@ import os
 import re
 import urllib.parse
 import urllib.request
+import zlib
 from typing import Any
 
 from ..models import OmniExtractResult, PlatformType
 from .douyin_extractor import clean_short_title
+
+
+def _decode_http_body(raw_bytes: bytes, content_encoding: str = "", charset: str = "utf-8") -> str:
+    """Safely decompress gzip/deflate HTTP responses before UTF-8 decoding (prevents binary garbled text)."""
+    enc = (content_encoding or "").lower()
+    if "gzip" in enc or raw_bytes[:2] == b"\x1f\x8b":
+        try:
+            raw_bytes = gzip.decompress(raw_bytes)
+        except Exception:
+            pass
+    elif "deflate" in enc:
+        try:
+            raw_bytes = zlib.decompress(raw_bytes)
+        except Exception:
+            try:
+                raw_bytes = zlib.decompress(raw_bytes, -zlib.MAX_WBITS)
+            except Exception:
+                pass
+    return raw_bytes.decode(charset or "utf-8", errors="replace")
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -118,7 +139,7 @@ def is_valid_article_body(text: str, min_chars: int = 120) -> bool:
 
 
 def _try_xiaohongshu_extract(url: str, timeout: float = 12.0) -> tuple[str, str, str, str, list[str]] | None:
-    """Cookie-free Xiaohongshu (RedNote) SSR meta & initial state extractor."""
+    """Cookie-free Xiaohongshu (RedNote) SSR meta & __INITIAL_STATE__ extractor."""
     parsed = urllib.parse.urlsplit(url)
     if "xiaohongshu.com" not in parsed.netloc.lower() and "xhslink.com" not in parsed.netloc.lower():
         return None
@@ -132,19 +153,42 @@ def _try_xiaohongshu_extract(url: str, timeout: float = 12.0) -> tuple[str, str,
             },
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            html_str = resp.read(2_000_000).decode("utf-8", errors="replace")
+            raw = resp.read(2_500_000)
+            html_str = _decode_http_body(
+                raw,
+                content_encoding=resp.headers.get("Content-Encoding") or "",
+                charset=resp.headers.get_content_charset() or "utf-8",
+            )
 
-        og_title = re.search(r'<meta\s+name="og:title"\s+content="([^"]+)"', html_str)
-        og_desc = re.search(r'<meta\s+name="description"\s+content="([^"]+)"', html_str)
-        og_imgs = re.findall(r'<meta\s+name="og:image"\s+content="([^"]+)"', html_str)
+        og_title = re.search(r'<meta\s+(?:name|property)="og:title"\s+content="([^"]+)"', html_str)
+        og_desc = re.search(r'<meta\s+(?:name|property)="(?:description|og:description)"\s+content="([^"]+)"', html_str)
+        og_imgs = re.findall(r'<meta\s+(?:name|property)="og:image"\s+content="([^"]+)"', html_str)
 
-        title = (og_title.group(1).replace(" - 小红书", "").strip() if og_title else "") or "Xiaohongshu Note"
+        title = (og_title.group(1).replace(" - 小红书", "").strip() if og_title else "")
         desc = (og_desc.group(1).strip() if og_desc else "")
-        if len(desc) >= 20 or og_imgs:
-            body = desc or title
-            if og_imgs:
-                body += "\n\n## Note Images\n" + "\n".join(f"- {u}" for u in og_imgs[:12])
-            return clean_short_title(title, author="Xiaohongshu"), "xiaohongshu.com", body, "xhs_ssr_meta", og_imgs[:12]
+
+        # Also inspect window.__INITIAL_STATE__ for full note detail if present
+        m_state = re.search(r"window\.__INITIAL_STATE__\s*=\s*(\{.+?\})</script>", html_str, re.S)
+        if m_state and (not desc or not og_imgs):
+            raw_state = m_state.group(1)
+            if not title:
+                mt = re.search(r'"title"\s*:\s*"([^"]+)"', raw_state)
+                if mt:
+                    title = mt.group(1)
+            if not desc:
+                md = re.search(r'"desc"\s*:\s*"([^"]+)"', raw_state)
+                if md:
+                    desc = md.group(1).encode("utf-8").decode("unicode_escape", errors="ignore")
+            if not og_imgs:
+                og_imgs = re.findall(r'"urlDefault"\s*:\s*"([^"]+)"', raw_state)
+
+        if (title and title != "小红书 - 你的生活兴趣社区") or len(desc) >= 10 or og_imgs:
+            final_title = title or "Xiaohongshu Note"
+            body = desc or final_title
+            clean_imgs = [u.replace("\\u002F", "/") for u in og_imgs[:12]]
+            if clean_imgs:
+                body += "\n\n## Note Images\n" + "\n".join(f"- {u}" for u in clean_imgs)
+            return clean_short_title(final_title, author="Xiaohongshu"), "xiaohongshu.com", body, "xhs_ssr_meta", clean_imgs
     except Exception:
         pass
     return None
@@ -207,7 +251,11 @@ def _try_direct_http_markdown(url: str, timeout: float = 12.0) -> tuple[str, str
             content_type = (resp.headers.get("Content-Type") or "").lower()
             raw_bytes = resp.read(2_000_000)
             charset = resp.headers.get_content_charset() or "utf-8"
-            text_str = raw_bytes.decode(charset, errors="replace")
+            text_str = _decode_http_body(
+                raw_bytes,
+                content_encoding=resp.headers.get("Content-Encoding") or "",
+                charset=charset,
+            )
 
         if "application/json" in content_type or "text/plain" in content_type or "text/markdown" in content_type:
             if is_valid_article_body(text_str, min_chars=60):
