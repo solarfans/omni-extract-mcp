@@ -78,3 +78,29 @@ python3 -m omni_extract.mcp_server --mode http --port 8080
 - `POST /v1/extract`: Direct REST single URL extraction
 - `POST /v1/extract/batch`: Direct REST concurrent batch extraction
 - `GET /v1/quota`: Check remaining API key credits or daily anonymous free quota
+
+---
+
+## Option 4: Quick Directory Integration (Smithery / mcpservers.org / Cursor / Claude Desktop)
+
+### Hosted Apify MCP Server (Zero Local Install)
+Connect directly using Apify's hosted MCP endpoint (`https://mcp.apify.com/?actors=poweragy/omni-extract-mcp`):
+
+```json
+{
+  "mcpServers": {
+    "omni-extract-cloud": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.apify.com/?actors=poweragy/omni-extract-mcp"],
+      "env": {
+        "APIFY_TOKEN": "YOUR_APIFY_TOKEN"
+      }
+    }
+  }
+}
+```
+
+### Troubleshooting & Common Error Fixes (FAQ)
+- **How to extract X (Twitter) Articles without cookies or login walls**: Standard HTTP scrapers stop at the X JS shell or truncated preview. Pass the full `x.com/<user>/status/<id>` URL to `omni_extract_url` — OmniExtract resolves the underlying Draft.js blocks (`article.content.blocks`) and entity media automatically without cookies.
+- **How to extract watermark-free Douyin / TikTok media without Playwright/Chrome**: Pass `v.douyin.com` or `douyin.com/video/...` links directly. OmniExtract resolves 302 redirects and computes `x-secsdk-web-signature` natively, returning clean Markdown + direct media URLs without headless browser overhead.
+- **Empty `{}` health checks vs billed items**: Empty input `{}` runs execute a read-only connectivity check and skip PPE item billing (`apify_ppe_skipped: true`), while real extraction runs emit transparent `charged` / `charge_failed` counters in the Actor summary.

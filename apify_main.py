@@ -73,13 +73,13 @@ def _push_apify_dataset_items(items: list[dict[str, Any]]) -> Path:
     return ds_dir
 
 
-def _charge_apify_ppe_event(event_name: str, count: int = 1) -> bool:
+def _charge_apify_ppe_event(event_name: str, count: int = 1) -> tuple[bool, str | None]:
     """Trigger Apify Pay-Per-Event (PPE) charging API when running inside Apify Cloud."""
-    run_id = os.environ.get("APIFY_ACTOR_RUN_ID", "").strip()
+    run_id = (os.environ.get("ACTOR_RUN_ID") or os.environ.get("APIFY_ACTOR_RUN_ID") or "").strip()
     token = os.environ.get("APIFY_TOKEN", "").strip()
     api_base = os.environ.get("APIFY_API_PUBLIC_BASE_URL", "https://api.apify.com").rstrip("/")
     if not (run_id and token):
-        return False
+        return False, "not_in_apify_cloud"
     try:
         url = f"{api_base}/v2/actor-runs/{run_id}/charge?token={token}"
         payload = json.dumps({"eventName": event_name, "count": count}).encode("utf-8")
@@ -90,9 +90,15 @@ def _charge_apify_ppe_event(event_name: str, count: int = 1) -> bool:
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return 200 <= resp.status < 300
-    except Exception:
-        return False
+            if 200 <= resp.status < 300:
+                return True, None
+            err = f"http_{resp.status}"
+            print(f"[apify_ppe_charge_error] event={event_name} {err}", file=sys.stderr)
+            return False, err
+    except Exception as exc:
+        err = str(exc)[:180]
+        print(f"[apify_ppe_charge_error] event={event_name} error={err}", file=sys.stderr)
+        return False, err
 
 
 def run_actor(custom_input: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -108,8 +114,10 @@ def run_actor(custom_input: dict[str, Any] | None = None) -> list[dict[str, Any]
             elif isinstance(item, dict) and isinstance(item.get("url"), str) and item["url"].strip():
                 urls.append(item["url"].strip())
 
+    used_fallback_url = False
     if not urls:
         # Fallback for Apify Store daily automated health checks when called with empty {} input
+        used_fallback_url = True
         urls = ["https://github.com/modelcontextprotocol/servers"]
 
     include_transcript = bool(actor_input.get("include_transcript", True))
@@ -123,17 +131,26 @@ def run_actor(custom_input: dict[str, Any] | None = None) -> list[dict[str, Any]
         client_id="apify_actor",
     )
 
-    # Trigger Pay-Per-Event billing for each successful item
+    # Trigger Pay-Per-Event billing for each successful item (skip health-check fallback)
     for item in results:
         if item.get("ok"):
+            if used_fallback_url:
+                item["apify_ppe_event"] = "skipped_health_check"
+                item["apify_ppe_charged"] = False
+                item["apify_ppe_skipped"] = True
+                continue
             event_name = (
                 "video_transcript_extracted"
                 if item.get("transcript")
                 else "content_item_extracted"
             )
-            charged = _charge_apify_ppe_event(event_name=event_name, count=1)
+            charged, err_reason = _charge_apify_ppe_event(event_name=event_name, count=1)
             item["apify_ppe_event"] = event_name
             item["apify_ppe_charged"] = charged
+            if err_reason == "not_in_apify_cloud":
+                item["apify_ppe_skipped"] = True
+            elif err_reason:
+                item["apify_ppe_error"] = err_reason
 
     _push_apify_dataset_items(results)
     return results
@@ -143,6 +160,10 @@ def main() -> int:
     try:
         results = run_actor()
         ok_count = sum(1 for r in results if r.get("ok"))
+        charged_count = sum(1 for r in results if r.get("apify_ppe_charged") is True)
+        charge_failed_count = sum(1 for r in results if r.get("ok") and r.get("apify_ppe_error"))
+        charge_skipped_count = sum(1 for r in results if r.get("ok") and r.get("apify_ppe_skipped") is True)
+        used_fallback = any(r.get("apify_ppe_event") == "skipped_health_check" for r in results)
         print(
             json.dumps(
                 {
@@ -150,6 +171,10 @@ def main() -> int:
                     "total_requested": len(results),
                     "succeeded": ok_count,
                     "failed": len(results) - ok_count,
+                    "charged": charged_count,
+                    "charge_failed": charge_failed_count,
+                    "charge_skipped": charge_skipped_count,
+                    "used_fallback_url": used_fallback,
                 },
                 ensure_ascii=False,
             )
