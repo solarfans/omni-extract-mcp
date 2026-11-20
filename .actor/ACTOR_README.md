@@ -84,5 +84,24 @@ curl -X POST "https://api.apify.com/v2/acts/poweragy~omni-extract-mcp/run-sync-g
   }'
 ```
 
-### 2. Use via Apify MCP Server (Claude Desktop / Cursor / Windsurf)
-Connect `poweragy/omni-extract-mcp` directly to your AI Agent via `https://mcp.apify.com/?actors=poweragy/omni-extract-mcp`!
+### 2. Use via Apify MCP Server (Claude Desktop / Cursor / Windsurf / Smithery)
+Connect `poweragy/omni-extract-mcp` directly to your AI Agent via `https://mcp.apify.com/?actors=poweragy/omni-extract-mcp`:
+
+```json
+{
+  "mcpServers": {
+    "omni-extract-cloud": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.apify.com/?actors=poweragy/omni-extract-mcp"],
+      "env": {
+        "APIFY_TOKEN": "YOUR_APIFY_TOKEN"
+      }
+    }
+  }
+}
+```
+
+### Troubleshooting & Billing Transparency (FAQ)
+- **X (Twitter) Articles truncated to JS shell?** `omni-extract-mcp` resolves Draft.js blocks & embedded media natively with zero cookies.
+- **Douyin cookie expired or Playwright blocked?** Native `x-secsdk-web-signature` resolution extracts watermark-free MP4/images statelessly.
+- **Empty `{}` test runs**: Health-check fallback probes skip Pay-Per-Event charging (`charge_skipped: 1`), while real URL runs emit exact `charged` / `charge_failed` telemetry in logs.

@@ -1,0 +1,27 @@
+name: omni-extract-mcp
+version: 1.0.0
+description: Cookie-free MCP server and REST gateway converting X Articles, Douyin, TikTok, YouTube transcripts, and anti-bot web pages into Markdown.
+repository: https://github.com/solarfans/omni-extract-mcp
+license: MIT
+
+runtime: container
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: .
+
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        title: Optional OmniExtract API Key
+        description: Optional API key for higher daily extraction quota (unauthenticated free tier supported).
+  exampleConfig: {}
+  http:
+    port: 8080
+    endpoint: /mcp
+
+documentation:
+  getting_started: https://github.com/solarfans/omni-extract-mcp#readme

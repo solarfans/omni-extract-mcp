@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.solarfans/omni-extract-mcp",
+  "description": "Cookie-free MCP server for X (Twitter) long-form Articles, watermark-free Douyin & TikTok media, YouTube/Bilibili transcripts, and clean Markdown.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/solarfans/omni-extract-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.apify.com/?actors=poweragy/omni-extract-mcp"
+    }
+  ]
+}

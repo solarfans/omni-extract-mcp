@@ -101,6 +101,8 @@ Connect directly using Apify's hosted MCP endpoint (`https://mcp.apify.com/?acto
 ```
 
 ### Troubleshooting & Common Error Fixes (FAQ)
-- **How to extract X (Twitter) Articles without cookies or login walls**: Standard HTTP scrapers stop at the X JS shell or truncated preview. Pass the full `x.com/<user>/status/<id>` URL to `omni_extract_url` — OmniExtract resolves the underlying Draft.js blocks (`article.content.blocks`) and entity media automatically without cookies.
-- **How to extract watermark-free Douyin / TikTok media without Playwright/Chrome**: Pass `v.douyin.com` or `douyin.com/video/...` links directly. OmniExtract resolves 302 redirects and computes `x-secsdk-web-signature` natively, returning clean Markdown + direct media URLs without headless browser overhead.
+- **[Fix: X (Twitter) Articles Truncated / JS Shell](./docs/fix-x-twitter-article-scraping-truncated.md)**: Standard HTTP scrapers stop at the X JS shell or truncated preview. Pass the full `x.com/<user>/status/<id>` URL to `omni_extract_url` — OmniExtract resolves the underlying Draft.js blocks (`article.content.blocks`) and entity media automatically without cookies.
+- **[Fix: Douyin Watermark & Cookie Expired Errors](./docs/fix-douyin-watermark-cookie-expired-mcp.md)**: Pass `v.douyin.com` or `douyin.com/video/...` links directly. OmniExtract resolves 302 redirects and computes `x-secsdk-web-signature` natively, returning clean Markdown + direct media URLs without headless browser overhead.
+- **[Fix: YouTube Transcript Blocked on Cloud IPs](./docs/fix-youtube-transcript-ip-blocked-mcp.md)**: Runs a 3-layer native + `yt-dlp` caption pipeline without downloading full MP4 streams.
 - **Empty `{}` health checks vs billed items**: Empty input `{}` runs execute a read-only connectivity check and skip PPE item billing (`apify_ppe_skipped: true`), while real extraction runs emit transparent `charged` / `charge_failed` counters in the Actor summary.
+- **Registry manifests included**: [`smithery.yaml`](./smithery.yaml) and [`server.json`](./server.json).
